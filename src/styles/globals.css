@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Segoe UI", ui-sans-serif, system-ui, -apple-system, Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --color-background: #ffffff;
+  --color-foreground: #424242;
+  --color-muted: #757575;
+  --color-border: #b3e5fc;
+  --color-primary: #2aa7e2;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f9d71c;
+  --color-secondary-foreground: #0f172a;
+  --color-accent: #e53935;
+  --color-accent-foreground: #ffffff;
+  --color-surface: #f7fbfe;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+}
+
+:root {
+  color-scheme: light only;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+body {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 0% -20%, rgba(42, 167, 226, 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(249, 215, 28, 0.1), transparent);
+  background-attachment: fixed;
+}
+
+@media (min-width: 768px) {
+  .main-with-sidebar {
+    padding-left: 256px;
+  }
+}
+
+.pb-nav-safe {
+  padding-bottom: 5.5rem;
+}
+
+@media (min-width: 768px) {
+  .pb-nav-safe {
+    padding-bottom: 1.5rem;
+  }
+}
