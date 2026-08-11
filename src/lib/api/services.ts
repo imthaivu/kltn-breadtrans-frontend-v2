@@ -121,7 +121,12 @@ export const courseApi = {
     apiFetch(`/courses/${id}`, { method: "DELETE" }),
   createClass: (
     courseId: number,
-    body: { name: string; description?: string },
+    body: {
+      name: string;
+      meetingLink?: string;
+      startDate?: string;
+      endDate?: string;
+    },
   ) => apiJson(`/courses/${courseId}/classes`, body),
   getClass: (classId: number) =>
     apiFetch<ClassSummary>(`/courses/classes/${classId}`),

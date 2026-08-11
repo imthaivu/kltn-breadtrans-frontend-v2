@@ -26,15 +26,18 @@ export type TopicCategory =
   | "WRITING_PART1"
   | "WRITING_PART2";
 
+/** Chỉ dùng TOEIC + GENERAL (+ các loại luyện tập) trên UI — không IELTS. */
 export type QuizType =
-  | "IELTS"
   | "TOEIC"
-  | "VSTEP"
   | "GENERAL"
   | "LISTENING_PRACTICE"
   | "BILINGUAL_READING"
   | "WRITING_PICTURE"
-  | "WRITING_EMAIL";
+  | "WRITING_EMAIL"
+  | "IELTS" // legacy API — không hiển thị trên UI
+  | "VSTEP";
+
+export type SpeakingCategory = "TOEIC" | "GENERAL";
 
 export type UserProfile = {
   id: number;
@@ -143,7 +146,15 @@ export type Course = {
 export type ClassSummary = {
   id: number;
   name: string;
-  description?: string | null;
+  meetingLink?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  status?: string | null;
+  teacher?: {
+    id: number;
+    email?: string;
+    profile?: { fullName?: string | null } | null;
+  } | null;
   lessons?: Lesson[];
   [key: string]: unknown;
 };

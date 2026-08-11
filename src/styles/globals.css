@@ -5,19 +5,22 @@
     Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  --color-background: #ffffff;
-  --color-foreground: #424242;
-  --color-muted: #757575;
-  --color-border: #b3e5fc;
+  --color-background: #f5f9fc;
+  --color-foreground: #334155;
+  --color-muted: #64748b;
+  --color-border: #d7ebf7;
   --color-primary: #2aa7e2;
   --color-primary-foreground: #ffffff;
   --color-secondary: #f9d71c;
   --color-secondary-foreground: #0f172a;
   --color-accent: #e53935;
   --color-accent-foreground: #ffffff;
-  --color-surface: #f7fbfe;
+  --color-surface: #ffffff;
   --color-success: #22c55e;
   --color-warning: #f59e0b;
+
+  --radius-control: 0.625rem;
+  --radius-card: 0.875rem;
 }
 
 :root {
@@ -34,23 +37,43 @@ body {
 
 body {
   background-image:
-    radial-gradient(ellipse 80% 50% at 0% -20%, rgba(42, 167, 226, 0.12), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(249, 215, 28, 0.1), transparent);
+    radial-gradient(
+      ellipse 70% 45% at 0% -15%,
+      rgba(42, 167, 226, 0.1),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 50% 35% at 100% 0%,
+      rgba(249, 215, 28, 0.08),
+      transparent
+    );
   background-attachment: fixed;
 }
 
+/* Cột nội dung bên phải sidebar — không ghép max-w lên cùng element */
+.app-main {
+  min-height: 100vh;
+  width: 100%;
+  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+}
+
 @media (min-width: 768px) {
-  .main-with-sidebar {
-    padding-left: 256px;
+  .app-main {
+    padding-left: 16rem; /* w-64 */
+    padding-bottom: 2rem;
   }
 }
 
-.pb-nav-safe {
-  padding-bottom: 5.5rem;
+.app-main-inner {
+  width: 100%;
+  max-width: 72rem; /* ~max-w-6xl */
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1.5rem 1.25rem;
 }
 
 @media (min-width: 768px) {
-  .pb-nav-safe {
-    padding-bottom: 1.5rem;
+  .app-main-inner {
+    padding: 1.75rem 2rem;
   }
 }

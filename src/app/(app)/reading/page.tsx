@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { EmptyState, ErrorState, PageLoading } from "@/components/ui/Loading";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { readingApi } from "@/lib/api/services";
 import type { TopicCategory } from "@/lib/api/types";
 import { getErrorMessage } from "@/lib/utils";
@@ -32,19 +33,18 @@ export default function ReadingPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Reading</h1>
-        <p className="text-sm text-muted">
-          Chủ đề ngữ pháp, mock test và đọc song ngữ.
-        </p>
-      </div>
+      <PageHeader
+        title="Reading"
+        description="Chủ đề ngữ pháp, mock test và đọc song ngữ."
+      />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {CATEGORIES.map((c) => (
           <Button
             key={c.value || "all"}
             size="sm"
             variant={category === c.value ? "primary" : "outline"}
+            className="shrink-0"
             onClick={() => setCategory(c.value)}
           >
             {c.label}
@@ -53,8 +53,8 @@ export default function ReadingPage() {
       </div>
 
       {progressQ.data ? (
-        <Card className="bg-surface">
-          <CardTitle className="text-base">Tiến độ bilingual</CardTitle>
+        <Card className="bg-surface/80">
+          <CardTitle>Tiến độ bilingual</CardTitle>
           <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
             {"completedArticles" in (progressQ.data as object) ? (
               <>
@@ -75,9 +75,9 @@ export default function ReadingPage() {
                 </div>
               </>
             ) : (
-              <pre className="max-h-32 overflow-auto text-xs text-muted">
-                {JSON.stringify(progressQ.data, null, 2)}
-              </pre>
+              <p className="text-sm text-muted sm:col-span-2">
+                Đã tải tiến độ bilingual.
+              </p>
             )}
           </div>
         </Card>
@@ -90,10 +90,10 @@ export default function ReadingPage() {
       ) : !Array.isArray(q.data) || q.data.length === 0 ? (
         <EmptyState title="Chưa có chủ đề reading" />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {q.data.map((t) => (
-            <Link key={t.id} href={`/reading/${t.id}`}>
-              <Card className="h-full transition hover:border-primary">
+            <Link key={t.id} href={`/reading/${t.id}`} className="block">
+              <Card className="h-full transition hover:border-primary hover:shadow-md">
                 <CardTitle>
                   {t.name || t.title || `Topic #${t.id}`}
                 </CardTitle>

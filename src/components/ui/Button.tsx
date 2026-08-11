@@ -12,7 +12,7 @@ const variants: Record<Variant, string> = {
   secondary:
     "bg-secondary text-secondary-foreground hover:bg-secondary/90",
   outline:
-    "border-2 border-border bg-white text-foreground hover:bg-surface",
+    "border border-border bg-white text-foreground hover:bg-surface",
   ghost: "text-foreground hover:bg-primary/10",
   danger: "bg-accent text-accent-foreground hover:bg-accent/90",
 };
@@ -47,7 +47,7 @@ export const Button = forwardRef<
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
         variants[variant],
         sizes[size],
         className,

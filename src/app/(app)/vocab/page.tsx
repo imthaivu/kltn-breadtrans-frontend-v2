@@ -2,6 +2,7 @@
 
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { EmptyState, ErrorState, PageLoading } from "@/components/ui/Loading";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { vocabApi } from "@/lib/api/services";
 import type { VocabTopic, VocabTopicsResponse } from "@/lib/api/types";
 import { getErrorMessage } from "@/lib/utils";
@@ -34,12 +35,10 @@ export default function VocabPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Từ vựng</h1>
-        <p className="text-sm text-muted">
-          Chọn chủ đề — flashcard, ôn tập SRS, đánh dấu từ khó.
-        </p>
-      </div>
+      <PageHeader
+        title="Từ vựng"
+        description="Chọn chủ đề — flashcard, ôn tập SRS, đánh dấu từ khó."
+      />
       {topics.length === 0 ? (
         <EmptyState
           title="Chưa có chủ đề từ vựng"
@@ -48,8 +47,8 @@ export default function VocabPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {topics.map((t) => (
-            <Link key={t.id} href={`/vocab/${t.id}`}>
-              <Card className="h-full transition hover:border-primary">
+            <Link key={t.id} href={`/vocab/${t.id}`} className="block">
+              <Card className="h-full transition hover:border-primary hover:shadow-md">
                 <CardTitle>{t.title || t.name || `Topic #${t.id}`}</CardTitle>
                 <CardDescription>
                   {[

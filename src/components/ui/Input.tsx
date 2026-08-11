@@ -17,7 +17,7 @@ export const Input = forwardRef<
         ref={ref}
         id={inputId}
         className={cn(
-          "rounded-md border-2 border-border bg-white px-3 py-2 text-foreground outline-none transition focus:border-primary",
+          "min-h-10 rounded-[var(--radius-control)] border border-border bg-white px-3 py-2 text-foreground outline-none transition focus:border-primary",
           error && "border-accent",
           className,
         )}
@@ -45,7 +45,7 @@ export const Textarea = forwardRef<
         ref={ref}
         id={inputId}
         className={cn(
-          "min-h-28 rounded-md border-2 border-border bg-white px-3 py-2 text-foreground outline-none transition focus:border-primary",
+          "min-h-28 rounded-[var(--radius-control)] border border-border bg-white px-3 py-2 text-foreground outline-none transition focus:border-primary",
           error && "border-accent",
           className,
         )}
@@ -73,7 +73,7 @@ export function Select({
       ) : null}
       <select
         className={cn(
-          "rounded-md border-2 border-border bg-white px-3 py-2 text-foreground outline-none transition focus:border-primary",
+          "min-h-10 rounded-[var(--radius-control)] border border-border bg-white px-3 py-2 text-foreground outline-none transition focus:border-primary",
           error && "border-accent",
           className,
         )}
