@@ -104,8 +104,7 @@ export default function SpeakingPage() {
           >
             <option value="">Tất cả</option>
             <option value="TOEIC">TOEIC</option>
-            <option value="IELTS">IELTS</option>
-            <option value="GENERAL">GENERAL</option>
+            <option value="GENERAL">Luyện tập chung</option>
           </Select>
         </div>
       </div>

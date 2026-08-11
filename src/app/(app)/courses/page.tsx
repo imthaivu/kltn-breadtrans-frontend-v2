@@ -2,6 +2,7 @@
 
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { EmptyState, ErrorState, PageLoading } from "@/components/ui/Loading";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { courseApi } from "@/lib/api/services";
 import type { Course } from "@/lib/api/types";
 import { getErrorMessage } from "@/lib/utils";
@@ -21,19 +22,17 @@ export default function CoursesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Khóa học</h1>
-        <p className="text-sm text-muted">
-          Danh sách khóa học và lớp học trên BreadTrans.
-        </p>
-      </div>
+      <PageHeader
+        title="Khóa học"
+        description="TOEIC / luyện tập chung — vào lớp online qua Meet hoặc Zoom."
+      />
       {courses.length === 0 ? (
         <EmptyState title="Chưa có khóa học" />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((c) => (
-            <Link key={c.id} href={`/courses/${c.id}`}>
-              <Card className="h-full transition hover:border-primary">
+            <Link key={c.id} href={`/courses/${c.id}`} className="block">
+              <Card className="h-full transition hover:border-primary hover:shadow-md">
                 <CardTitle>{c.title}</CardTitle>
                 <CardDescription>
                   {c.description ||

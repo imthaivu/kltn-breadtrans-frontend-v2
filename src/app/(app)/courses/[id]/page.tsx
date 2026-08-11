@@ -8,7 +8,7 @@ import { getErrorMessage } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiVideo } from "react-icons/fi";
 
 export default function CourseDetailPage() {
   const params = useParams<{ id: string }>();
@@ -47,8 +47,23 @@ export default function CourseDetailPage() {
           classes.map((cls) => (
             <Link key={cls.id} href={`/courses/classes/${cls.id}`}>
               <Card className="mb-3 transition hover:border-primary">
-                <CardTitle className="text-base">{cls.name}</CardTitle>
-                <CardDescription>{cls.description}</CardDescription>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base">{cls.name}</CardTitle>
+                    <CardDescription>
+                      {cls.teacher?.profile?.fullName ||
+                        cls.teacher?.email ||
+                        (cls.startDate
+                          ? `Bắt đầu ${new Date(cls.startDate).toLocaleDateString("vi-VN")}`
+                          : "Xem chi tiết lớp")}
+                    </CardDescription>
+                  </div>
+                  {cls.meetingLink ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                      <FiVideo className="h-3.5 w-3.5" /> Online
+                    </span>
+                  ) : null}
+                </div>
               </Card>
             </Link>
           ))
