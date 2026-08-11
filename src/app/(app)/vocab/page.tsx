@@ -1,8 +1,10 @@
 "use client";
 
-import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
+import { Card, CardTitle } from "@/components/ui/Card";
 import { EmptyState, ErrorState, PageLoading } from "@/components/ui/Loading";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { Tag } from "@/components/ui/Tag";
 import { vocabApi } from "@/lib/api/services";
 import type { VocabTopic, VocabTopicsResponse } from "@/lib/api/types";
 import { getErrorMessage } from "@/lib/utils";
@@ -46,28 +48,25 @@ export default function VocabPage() {
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {topics.map((t) => (
-            <Link key={t.id} href={`/vocab/${t.id}`} className="block">
-              <Card className="h-full transition hover:border-primary hover:shadow-md">
-                <CardTitle>{t.title || t.name || `Topic #${t.id}`}</CardTitle>
-                <CardDescription>
-                  {[
-                    t.categoryName,
-                    t.totalWords != null
-                      ? `${t.totalWords} từ`
-                      : t.wordCount != null
-                        ? `${t.wordCount} từ`
-                        : null,
-                    t.learnedCount != null
-                      ? `${t.learnedCount} đã học`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "Xem danh sách từ"}
-                </CardDescription>
-              </Card>
-            </Link>
-          ))}
+          {topics.map((t) => {
+            const total = t.totalWords ?? t.wordCount ?? 0;
+            const learned = t.learnedCount ?? 0;
+            return (
+              <Link key={t.id} href={`/vocab/${t.id}`} className="block">
+                <Card className="h-full space-y-2 transition hover:border-primary hover:shadow-md">
+                  <CardTitle>{t.title || t.name || `Topic #${t.id}`}</CardTitle>
+                  <div className="flex flex-wrap gap-1.5">
+                    {t.categoryName ? <Tag variant="primary">{t.categoryName}</Tag> : null}
+                    {t.isPro ? <Tag variant="secondary">PRO</Tag> : null}
+                    <Tag variant="outline">{total} từ</Tag>
+                  </div>
+                  {total > 0 ? (
+                    <ProgressBar value={learned} max={total} label={`${learned}/${total}`} />
+                  ) : null}
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

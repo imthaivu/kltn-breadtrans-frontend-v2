@@ -112,6 +112,8 @@ export type QuizSummary = {
   title: string;
   type?: QuizType;
   description?: string | null;
+  timeLimit?: number | null;
+  _count?: { questions?: number };
   [key: string]: unknown;
 };
 
@@ -120,6 +122,7 @@ export type Question = {
   type: string;
   content: string | Record<string, unknown>;
   order?: number;
+  part?: number | string;
   options?: string[] | { text: string; isCorrect?: boolean }[];
   correctAnswer?: string;
   explanation?: string;
@@ -131,6 +134,51 @@ export type Question = {
 export type QuizDetail = QuizSummary & {
   questions?: Question[];
   theoryContent?: string | null;
+};
+
+export type SubmissionResultItem = {
+  questionId: number;
+  answer: string;
+  isCorrect: boolean;
+  score: number;
+  [key: string]: unknown;
+};
+
+export type SubmitQuizResponse = {
+  id: number;
+  quizId: number;
+  userId: number;
+  score: number;
+  aiFeedback?: string | null;
+  results: SubmissionResultItem[];
+  [key: string]: unknown;
+};
+
+export type QuizCategoryBreakdown = {
+  category: string;
+  correct: number;
+  total: number;
+  accuracyPercent: number;
+};
+
+export type QuizAnalytics = {
+  submissionId: number;
+  quizTitle: string;
+  overallScore: number;
+  totalQuestions: number;
+  totalCorrect: number;
+  overallAccuracyPercent: number;
+  categoriesBreakdown: QuizCategoryBreakdown[];
+  strengths: string[];
+  weaknesses: string[];
+  recommendation: string;
+  [key: string]: unknown;
+};
+
+export type ToeicScoreConversion = {
+  listening: { correct: number; total: number; score: number };
+  reading: { correct: number; total: number; score: number };
+  totalScore: number;
 };
 
 export type Course = {
@@ -183,6 +231,27 @@ export type SpeakingExercise = {
   category?: string;
   difficulty?: string;
   referenceAudioUrl?: string | null;
+  [key: string]: unknown;
+};
+
+export type SpeakingSubmission = {
+  id: number;
+  exerciseId?: number;
+  audioUrl?: string | null;
+  overallScore?: number | null;
+  aiFeedback?: { feedback?: string; overallScore?: number; [key: string]: unknown } | null;
+  submittedAt?: string;
+  exercise?: { id?: number; title?: string } | null;
+  [key: string]: unknown;
+};
+
+export type CommunitySubmission = {
+  id: number;
+  user?: string;
+  score?: number;
+  answer?: string;
+  feedback?: unknown;
+  submittedAt?: string;
   [key: string]: unknown;
 };
 

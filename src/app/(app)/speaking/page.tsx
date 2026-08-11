@@ -2,17 +2,37 @@
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
+import { FeedbackCard } from "@/components/ui/FeedbackCard";
 import { Select, Textarea } from "@/components/ui/Input";
 import { EmptyState, ErrorState, PageLoading } from "@/components/ui/Loading";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Tag } from "@/components/ui/Tag";
 import { speakingApi } from "@/lib/api/services";
 import type { SpeakingExercise } from "@/lib/api/types";
-import { getErrorMessage } from "@/lib/utils";
+import { getErrorMessage, parseFeedbackResult } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { FiMic, FiSquare } from "react-icons/fi";
+import { FiClock, FiMic, FiSquare } from "react-icons/fi";
 
 export default function SpeakingPage() {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <SpeakingPageInner />
+    </Suspense>
+  );
+}
+
+function SpeakingPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const exerciseIdParam = searchParams.get("id");
+  const exerciseId =
+    exerciseIdParam && /^\d+$/.test(exerciseIdParam)
+      ? Number(exerciseIdParam)
+      : null;
+
   const [category, setCategory] = useState("");
   const [selected, setSelected] = useState<SpeakingExercise | null>(null);
   const [recording, setRecording] = useState(false);
@@ -28,6 +48,24 @@ export default function SpeakingPage() {
     queryKey: ["speaking", "exercises", category],
     queryFn: () => speakingApi.list(category || undefined),
   });
+
+  const detailQ = useQuery({
+    queryKey: ["speaking", "exercises", "detail", exerciseId],
+    queryFn: () => speakingApi.get(exerciseId!),
+    enabled: exerciseId != null,
+  });
+
+  useEffect(() => {
+    if (detailQ.data) {
+      setSelected(detailQ.data);
+    }
+  }, [detailQ.data]);
+
+  useEffect(() => {
+    if (detailQ.isError) {
+      toast.error(getErrorMessage(detailQ.error));
+    }
+  }, [detailQ.isError, detailQ.error]);
 
   const historyQ = useQuery({
     queryKey: ["speaking", "my-submissions"],
@@ -55,6 +93,13 @@ export default function SpeakingPage() {
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
+
+  function selectExercise(ex: SpeakingExercise) {
+    setSelected(ex);
+    setResult(null);
+    setBlob(null);
+    router.replace(`/speaking?id=${ex.id}`, { scroll: false });
+  }
 
   async function startRecord() {
     try {
@@ -88,12 +133,10 @@ export default function SpeakingPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Speaking</h1>
-        <p className="text-sm text-muted">
-          Ghi âm phát âm hoặc nộp bài Part 3–5 dạng văn bản.
-        </p>
-      </div>
+      <PageHeader
+        title="Speaking"
+        description="Ghi âm phát âm hoặc nộp bài Part 3–5 dạng văn bản — AI chấm và phản hồi."
+      />
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-48">
@@ -122,11 +165,7 @@ export default function SpeakingPage() {
               key={ex.id}
               type="button"
               className="text-left"
-              onClick={() => {
-                setSelected(ex);
-                setResult(null);
-                setBlob(null);
-              }}
+              onClick={() => selectExercise(ex)}
             >
               <Card
                 className={
@@ -136,9 +175,13 @@ export default function SpeakingPage() {
                 }
               >
                 <CardTitle className="text-base">{ex.title}</CardTitle>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <Tag variant="primary">{ex.category || "Exercise"}</Tag>
+                  {ex.difficulty ? (
+                    <Tag variant="outline">{ex.difficulty}</Tag>
+                  ) : null}
+                </div>
                 <CardDescription>
-                  {ex.category || "Exercise"}
-                  {ex.difficulty ? ` · ${ex.difficulty}` : ""} —{" "}
                   {(ex.targetText || ex.promptText || "").slice(0, 80)}
                 </CardDescription>
               </Card>
@@ -146,6 +189,10 @@ export default function SpeakingPage() {
           ))}
         </div>
       )}
+
+      {exerciseId != null && detailQ.isLoading && !selected ? (
+        <PageLoading label="Đang tải bài speaking..." />
+      ) : null}
 
       {selected ? (
         <Card className="space-y-4">
@@ -219,21 +266,84 @@ export default function SpeakingPage() {
       </Card>
 
       {result ? (
-        <Card className="border-primary/40 bg-primary/5">
-          <CardTitle className="text-base">Kết quả</CardTitle>
-          <pre className="mt-2 max-h-80 overflow-auto text-sm whitespace-pre-wrap">
-            {JSON.stringify(result, null, 2)}
-          </pre>
-        </Card>
+        (() => {
+          const r = result as Record<string, unknown>;
+          const assessment =
+            r.assessment && typeof r.assessment === "object"
+              ? (r.assessment as Record<string, unknown>)
+              : null;
+          if (assessment) {
+            const overall =
+              typeof assessment.overallScore === "number"
+                ? assessment.overallScore
+                : typeof r.overallScore === "number"
+                  ? (r.overallScore as number)
+                  : undefined;
+            return (
+              <FeedbackCard
+                title="Kết quả chấm phát âm"
+                score={overall}
+                maxScore={overall != null ? 100 : undefined}
+                feedback={
+                  typeof assessment.feedback === "string"
+                    ? assessment.feedback
+                    : JSON.stringify(assessment, null, 2)
+                }
+              />
+            );
+          }
+          return (
+            <FeedbackCard
+              title="Kết quả chấm bài"
+              {...parseFeedbackResult(result)}
+            />
+          );
+        })()
       ) : null}
 
-      <Card>
+      <Card className="space-y-3">
         <CardTitle className="text-base">Lịch sử của tôi</CardTitle>
-        <pre className="mt-2 max-h-60 overflow-auto text-xs text-muted">
-          {historyQ.isLoading
-            ? "Đang tải..."
-            : JSON.stringify(historyQ.data ?? [], null, 2)}
-        </pre>
+        {historyQ.isLoading ? (
+          <PageLoading label="Đang tải lịch sử..." />
+        ) : historyQ.isError ? (
+          <ErrorState message={getErrorMessage(historyQ.error)} />
+        ) : !Array.isArray(historyQ.data) || historyQ.data.length === 0 ? (
+          <EmptyState title="Chưa có lịch sử luyện tập" />
+        ) : (
+          <div className="max-h-72 space-y-2 overflow-auto">
+            {historyQ.data.map((sub) => {
+              const score = sub.overallScore ?? sub.aiFeedback?.overallScore;
+              const feedback = sub.aiFeedback?.feedback;
+              return (
+                <div
+                  key={sub.id}
+                  className="space-y-1 rounded-[var(--radius-control)] bg-surface px-3 py-2.5 text-sm"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-foreground">
+                      {sub.exercise?.title ||
+                        `Bài #${sub.exerciseId ?? sub.id}`}
+                    </span>
+                    {typeof score === "number" ? (
+                      <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                        {score} điểm
+                      </span>
+                    ) : null}
+                  </div>
+                  {sub.submittedAt ? (
+                    <p className="flex items-center gap-1 text-xs text-muted">
+                      <FiClock className="h-3 w-3" />
+                      {new Date(sub.submittedAt).toLocaleString("vi-VN")}
+                    </p>
+                  ) : null}
+                  {typeof feedback === "string" ? (
+                    <p className="line-clamp-2 text-foreground/90">{feedback}</p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
     </div>
   );

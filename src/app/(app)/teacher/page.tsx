@@ -1,27 +1,26 @@
 "use client";
 
+import { CourseContentPanel } from "@/components/teacher/CourseContentPanel";
+import { QuizBuilderPanel } from "@/components/teacher/QuizBuilderPanel";
 import { RequireRole } from "@/components/layout/RequireAuth";
 import { Button } from "@/components/ui/Button";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
-import {
-  courseApi,
-  quizApi,
-  speakingApi,
-  uploadApi,
-} from "@/lib/api/services";
+import { useAuth } from "@/lib/api";
+import { courseApi, speakingApi } from "@/lib/api/services";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { FiTrash2 } from "react-icons/fi";
 
 type TeacherTab = "class" | "content" | "quiz" | "speaking";
 
 const TABS: { id: TeacherTab; label: string }[] = [
   { id: "class", label: "Khóa & lớp online" },
   { id: "content", label: "Bài học" },
-  { id: "quiz", label: "Quiz" },
+  { id: "quiz", label: "Soạn đề" },
   { id: "speaking", label: "Speaking" },
 ];
 
@@ -35,6 +34,8 @@ export default function TeacherPage() {
 
 function TeacherPanels() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const coursesQ = useQuery({
     queryKey: ["courses"],
     queryFn: () => courseApi.list(),
@@ -52,29 +53,6 @@ function TeacherPanels() {
     startDate: "",
     endDate: "",
   });
-  const [lessonForm, setLessonForm] = useState({
-    classId: 0,
-    title: "",
-    order: 1,
-  });
-  const [materialForm, setMaterialForm] = useState({
-    lessonId: 0,
-    title: "",
-    fileUrl: "",
-    fileType: "pdf",
-  });
-  const [quizForm, setQuizForm] = useState({
-    title: "",
-    type: "TOEIC",
-    description: "",
-    courseId: "",
-  });
-  const [questionForm, setQuestionForm] = useState({
-    quizId: 0,
-    type: "MULTIPLE_CHOICE",
-    content: '{"question":"","options":["A","B","C","D"]}',
-    order: 1,
-  });
   const [speakingForm, setSpeakingForm] = useState({
     title: "",
     targetText: "",
@@ -82,6 +60,7 @@ function TeacherPanels() {
     difficulty: "MEDIUM",
   });
   const [tab, setTab] = useState<TeacherTab>("class");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const createCourse = useMutation({
     mutationFn: () =>
@@ -92,9 +71,23 @@ function TeacherPanels() {
       }),
     onSuccess: () => {
       toast.success("Đã tạo khóa học");
+      setCourseForm({ title: "", description: "", price: 0 });
       void qc.invalidateQueries({ queryKey: ["courses"] });
     },
     onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const removeCourse = useMutation({
+    mutationFn: (id: number) => courseApi.remove(id),
+    onSuccess: () => {
+      toast.success("Đã xóa khóa học");
+      setDeletingId(null);
+      void qc.invalidateQueries({ queryKey: ["courses"] });
+    },
+    onError: (e) => {
+      setDeletingId(null);
+      toast.error(getErrorMessage(e));
+    },
   });
 
   const createClass = useMutation({
@@ -123,66 +116,28 @@ function TeacherPanels() {
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
-  const createLesson = useMutation({
-    mutationFn: () =>
-      courseApi.createLesson(lessonForm.classId, {
-        title: lessonForm.title,
-        order: lessonForm.order,
-      }),
-    onSuccess: () => toast.success("Đã tạo bài học"),
-    onError: (e) => toast.error(getErrorMessage(e)),
-  });
-
-  const addMaterial = useMutation({
-    mutationFn: () =>
-      courseApi.addMaterial(materialForm.lessonId, {
-        title: materialForm.title,
-        fileUrl: materialForm.fileUrl,
-        fileType: materialForm.fileType,
-      }),
-    onSuccess: () => toast.success("Đã thêm tài liệu"),
-    onError: (e) => toast.error(getErrorMessage(e)),
-  });
-
-  const createQuiz = useMutation({
-    mutationFn: () =>
-      quizApi.create({
-        title: quizForm.title,
-        type: quizForm.type,
-        description: quizForm.description || undefined,
-        courseId: quizForm.courseId ? Number(quizForm.courseId) : undefined,
-      }),
-    onSuccess: () => toast.success("Đã tạo quiz"),
-    onError: (e) => toast.error(getErrorMessage(e)),
-  });
-
-  const addQuestion = useMutation({
-    mutationFn: () =>
-      quizApi.addQuestion(questionForm.quizId, {
-        type: questionForm.type,
-        content: questionForm.content,
-        order: questionForm.order,
-      }),
-    onSuccess: () => toast.success("Đã thêm câu hỏi"),
-    onError: (e) => toast.error(getErrorMessage(e)),
-  });
-
   const createSpeaking = useMutation({
     mutationFn: () => speakingApi.create(speakingForm),
-    onSuccess: () => toast.success("Đã tạo speaking exercise"),
-    onError: (e) => toast.error(getErrorMessage(e)),
-  });
-
-  const uploadMaterial = useMutation({
-    mutationFn: (file: File) => uploadApi.upload(file),
-    onSuccess: (data) => {
-      setMaterialForm((s) => ({ ...s, fileUrl: data.url }));
-      toast.success("Upload xong — URL đã điền");
+    onSuccess: () => {
+      toast.success("Đã tạo speaking exercise");
+      setSpeakingForm({ title: "", targetText: "", category: "TOEIC", difficulty: "MEDIUM" });
     },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const courses = Array.isArray(coursesQ.data) ? coursesQ.data : [];
+
+  function handleDeleteCourse(id: number, title: string) {
+    if (
+      !window.confirm(
+        `Xóa khóa học "${title}"? Thao tác này không hoàn tác được.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(id);
+    removeCourse.mutate(id);
+  }
 
   return (
     <div className="space-y-6">
@@ -308,190 +263,51 @@ function TeacherPanels() {
               Mở lớp
             </Button>
           </Card>
+
+          {courses.length > 0 ? (
+            <Card className="space-y-3 lg:col-span-2">
+              <CardTitle>Danh sách khóa học</CardTitle>
+              <ul className="divide-y divide-border">
+                {courses.map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground">{c.title}</p>
+                      <p className="text-xs text-muted">
+                        {c.classes?.length
+                          ? `${c.classes.length} lớp`
+                          : "Chưa có lớp"}
+                        {c.price != null ? ` · ${c.price} VND` : ""}
+                      </p>
+                    </div>
+                    {isAdmin ? (
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        loading={deletingId === c.id && removeCourse.isPending}
+                        onClick={() => handleDeleteCourse(c.id, c.title)}
+                      >
+                        <FiTrash2 className="h-4 w-4" /> Xóa
+                      </Button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              {!isAdmin ? (
+                <p className="text-xs text-muted">
+                  Chỉ Admin mới được xóa khóa học.
+                </p>
+              ) : null}
+            </Card>
+          ) : null}
         </div>
       ) : null}
 
-      {tab === "content" ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="space-y-3">
-            <CardTitle>Tạo bài học</CardTitle>
-            <Input
-              label="Class ID"
-              type="number"
-              value={lessonForm.classId || ""}
-              onChange={(e) =>
-                setLessonForm((s) => ({
-                  ...s,
-                  classId: Number(e.target.value),
-                }))
-              }
-            />
-            <Input
-              label="Tiêu đề"
-              value={lessonForm.title}
-              onChange={(e) =>
-                setLessonForm((s) => ({ ...s, title: e.target.value }))
-              }
-            />
-            <Input
-              label="Thứ tự"
-              type="number"
-              value={lessonForm.order}
-              onChange={(e) =>
-                setLessonForm((s) => ({
-                  ...s,
-                  order: Number(e.target.value),
-                }))
-              }
-            />
-            <Button
-              loading={createLesson.isPending}
-              disabled={!lessonForm.classId || !lessonForm.title.trim()}
-              onClick={() => createLesson.mutate()}
-            >
-              Tạo lesson
-            </Button>
-          </Card>
+      {tab === "content" ? <CourseContentPanel courses={courses} /> : null}
 
-          <Card className="space-y-3">
-            <CardTitle>Thêm tài liệu</CardTitle>
-            <Input
-              label="Lesson ID"
-              type="number"
-              value={materialForm.lessonId || ""}
-              onChange={(e) =>
-                setMaterialForm((s) => ({
-                  ...s,
-                  lessonId: Number(e.target.value),
-                }))
-              }
-            />
-            <Input
-              label="Tiêu đề"
-              value={materialForm.title}
-              onChange={(e) =>
-                setMaterialForm((s) => ({ ...s, title: e.target.value }))
-              }
-            />
-            <Input
-              label="File URL"
-              value={materialForm.fileUrl}
-              onChange={(e) =>
-                setMaterialForm((s) => ({ ...s, fileUrl: e.target.value }))
-              }
-            />
-            <input
-              type="file"
-              className="text-sm"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) uploadMaterial.mutate(f);
-              }}
-            />
-            <Button
-              loading={addMaterial.isPending}
-              disabled={
-                !materialForm.lessonId ||
-                !materialForm.title.trim() ||
-                !materialForm.fileUrl.trim()
-              }
-              onClick={() => addMaterial.mutate()}
-            >
-              Thêm material
-            </Button>
-          </Card>
-        </div>
-      ) : null}
-
-      {tab === "quiz" ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="space-y-3">
-            <CardTitle>Tạo quiz</CardTitle>
-            <Input
-              label="Tiêu đề"
-              value={quizForm.title}
-              onChange={(e) =>
-                setQuizForm((s) => ({ ...s, title: e.target.value }))
-              }
-            />
-            <Select
-              label="Loại"
-              value={quizForm.type}
-              onChange={(e) =>
-                setQuizForm((s) => ({ ...s, type: e.target.value }))
-              }
-            >
-              {[
-                { value: "TOEIC", label: "TOEIC" },
-                { value: "GENERAL", label: "Luyện tập chung" },
-                { value: "LISTENING_PRACTICE", label: "Listening practice" },
-                { value: "BILINGUAL_READING", label: "Reading song ngữ" },
-              ].map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </Select>
-            <Textarea
-              label="Mô tả"
-              value={quizForm.description}
-              onChange={(e) =>
-                setQuizForm((s) => ({ ...s, description: e.target.value }))
-              }
-            />
-            <Input
-              label="Course ID (tuỳ chọn)"
-              value={quizForm.courseId}
-              onChange={(e) =>
-                setQuizForm((s) => ({ ...s, courseId: e.target.value }))
-              }
-            />
-            <Button
-              loading={createQuiz.isPending}
-              disabled={!quizForm.title.trim()}
-              onClick={() => createQuiz.mutate()}
-            >
-              Tạo quiz
-            </Button>
-          </Card>
-
-          <Card className="space-y-3">
-            <CardTitle>Thêm câu hỏi</CardTitle>
-            <Input
-              label="Quiz ID"
-              type="number"
-              value={questionForm.quizId || ""}
-              onChange={(e) =>
-                setQuestionForm((s) => ({
-                  ...s,
-                  quizId: Number(e.target.value),
-                }))
-              }
-            />
-            <Input
-              label="Type"
-              value={questionForm.type}
-              onChange={(e) =>
-                setQuestionForm((s) => ({ ...s, type: e.target.value }))
-              }
-            />
-            <Textarea
-              label="Content (JSON hoặc text)"
-              value={questionForm.content}
-              onChange={(e) =>
-                setQuestionForm((s) => ({ ...s, content: e.target.value }))
-              }
-            />
-            <Button
-              loading={addQuestion.isPending}
-              disabled={!questionForm.quizId}
-              onClick={() => addQuestion.mutate()}
-            >
-              Thêm câu hỏi
-            </Button>
-          </Card>
-        </div>
-      ) : null}
+      {tab === "quiz" ? <QuizBuilderPanel courses={courses} /> : null}
 
       {tab === "speaking" ? (
         <Card className="mx-auto max-w-3xl space-y-3">

@@ -1,261 +1,110 @@
 "use client";
 
+import { ChatThread, type ChatMessage } from "@/components/ai/ChatThread";
 import { Button } from "@/components/ui/Button";
-import { Card, CardTitle } from "@/components/ui/Card";
-import { Input, Select, Textarea } from "@/components/ui/Input";
-import { RequireRole } from "@/components/layout/RequireAuth";
+import { Card } from "@/components/ui/Card";
+import { Textarea } from "@/components/ui/Input";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { aiApi } from "@/lib/api/services";
 import { getErrorMessage } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { FiCpu, FiSend } from "react-icons/fi";
+
+const STARTER_PROMPTS = [
+  "Giải thích sự khác nhau giữa thì hiện tại hoàn thành và quá khứ đơn",
+  "Cho ví dụ câu dùng cấu trúc \"used to\"",
+  "Gợi ý cách học từ vựng TOEIC Part 5 hiệu quả",
+  "Sửa lỗi câu: \"I have visited Paris last year\"",
+];
 
 export default function AiPage() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState("");
-  const [chatReply, setChatReply] = useState("");
-  const [topic, setTopic] = useState("Business");
-  const [part, setPart] = useState("5");
-  const [count, setCount] = useState(5);
-  const [dictationTopic, setDictationTopic] = useState("daily life");
-  const [dictationCount, setDictationCount] = useState(5);
-  const [genResult, setGenResult] = useState<unknown>(null);
-  const [explain, setExplain] = useState({
-    questionId: 1,
-    questionContent: "",
-    userAnswer: "",
-    correctAnswer: "",
-  });
-  const [explainResult, setExplainResult] = useState<unknown>(null);
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [importResult, setImportResult] = useState<unknown>(null);
 
   const chat = useMutation({
-    mutationFn: () => aiApi.chat(prompt),
+    mutationFn: (text: string) => aiApi.chat(text),
     onSuccess: (data) => {
-      setChatReply(data?.reply ?? JSON.stringify(data));
-      toast.success("AI đã trả lời");
+      setMessages((list) => [
+        ...list,
+        { role: "assistant", content: data?.reply ?? "(Không có phản hồi)", at: Date.now() },
+      ]);
     },
-    onError: (err) => toast.error(getErrorMessage(err)),
+    onError: (err) => {
+      toast.error(getErrorMessage(err));
+      setMessages((list) => [
+        ...list,
+        { role: "assistant", content: "Xin lỗi, mình gặp lỗi khi trả lời. Bạn thử lại nhé.", at: Date.now() },
+      ]);
+    },
   });
 
-  const dictation = useMutation({
-    mutationFn: () =>
-      aiApi.generateDictation({
-        topic: dictationTopic,
-        count: dictationCount,
-      }),
-    onSuccess: (data) => {
-      setGenResult(data);
-      toast.success("Đã tạo dictation quiz");
-    },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
-
-  const toeic = useMutation({
-    mutationFn: () =>
-      aiApi.generateToeicQuiz({ topic, part, count }),
-    onSuccess: (data) => {
-      setGenResult(data);
-      toast.success("Đã tạo TOEIC quiz");
-    },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
-
-  const explainMut = useMutation({
-    mutationFn: () =>
-      aiApi.explainError(explain.questionId, {
-        questionContent: explain.questionContent,
-        userAnswer: explain.userAnswer,
-        correctAnswer: explain.correctAnswer,
-      }),
-    onSuccess: (data) => {
-      setExplainResult(data);
-      toast.success("Đã giải thích");
-    },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
-
-  const importMut = useMutation({
-    mutationFn: () => {
-      if (!pdfFile) throw new Error("Chọn file PDF");
-      return aiApi.importEtsPdf(pdfFile, audioFile || undefined);
-    },
-    onSuccess: (data) => {
-      setImportResult(data);
-      toast.success("Import ETS thành công");
-    },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
+  function send(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || chat.isPending) return;
+    setMessages((list) => [...list, { role: "user", content: trimmed, at: Date.now() }]);
+    setPrompt("");
+    chat.mutate(trimmed);
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">AI Hub</h1>
-        <p className="text-sm text-muted">
-          Chat tutor, tạo đề, giải thích lỗi, import ETS PDF.
-        </p>
-      </div>
+    <div className="flex h-[calc(100vh-8rem)] flex-col gap-4">
+      <PageHeader
+        title="Trợ lý AI"
+        description="Hỏi đáp ngữ pháp, từ vựng, cách học — trò chuyện trực tiếp với gia sư AI."
+      />
 
-      <Card className="space-y-3">
-        <CardTitle className="text-base">Chat tutor</CardTitle>
-        <Textarea
-          label="Câu hỏi"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Giải thích thì hiện tại hoàn thành..."
-        />
-        <Button
-          loading={chat.isPending}
-          disabled={!prompt.trim()}
-          onClick={() => chat.mutate()}
-        >
-          Gửi
-        </Button>
-        {chatReply ? (
-          <div className="rounded-md bg-surface p-3 text-sm whitespace-pre-wrap">
-            {chatReply}
+      <Card className="flex flex-1 flex-col overflow-hidden p-4">
+        {messages.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <FiCpu className="h-7 w-7" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Hỏi mình bất cứ điều gì</h3>
+              <p className="text-sm text-muted">Ngữ pháp, từ vựng, cách học tiếng Anh...</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {STARTER_PROMPTS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => send(s)}
+                  className="rounded-full border border-border bg-white px-3.5 py-1.5 text-xs font-medium text-foreground transition hover:border-primary hover:text-primary"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
-        ) : null}
-      </Card>
+        ) : (
+          <ChatThread messages={messages} pending={chat.isPending} />
+        )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="space-y-3">
-          <CardTitle className="text-base">Generate dictation</CardTitle>
-          <Input
-            label="Topic"
-            value={dictationTopic}
-            onChange={(e) => setDictationTopic(e.target.value)}
+        <div className="mt-3 flex items-end gap-2 border-t border-border pt-3">
+          <Textarea
+            className="min-h-12 flex-1 resize-none"
+            placeholder="Nhập câu hỏi... (Enter để gửi, Shift+Enter xuống dòng)"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send(prompt);
+              }
+            }}
           />
-          <Input
-            label="Số câu"
-            type="number"
-            min={1}
-            max={20}
-            value={dictationCount}
-            onChange={(e) => setDictationCount(Number(e.target.value))}
-          />
-          <Button loading={dictation.isPending} onClick={() => dictation.mutate()}>
-            Tạo listening practice
-          </Button>
-        </Card>
-        <Card className="space-y-3">
-          <CardTitle className="text-base">Generate TOEIC quiz</CardTitle>
-          <Input
-            label="Topic"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-          />
-          <Select
-            label="Part"
-            value={part}
-            onChange={(e) => setPart(e.target.value)}
-          >
-            {[1, 2, 3, 4, 5, 6, 7].map((p) => (
-              <option key={p} value={p}>
-                Part {p}
-              </option>
-            ))}
-          </Select>
-          <Input
-            label="Số câu"
-            type="number"
-            min={1}
-            max={20}
-            value={count}
-            onChange={(e) => setCount(Number(e.target.value))}
-          />
-          <Button loading={toeic.isPending} onClick={() => toeic.mutate()}>
-            Tạo câu hỏi
-          </Button>
-        </Card>
-      </div>
-
-      {genResult ? (
-        <Card>
-          <CardTitle className="text-base">Kết quả generate</CardTitle>
-          <pre className="mt-2 max-h-80 overflow-auto text-xs whitespace-pre-wrap">
-            {JSON.stringify(genResult, null, 2)}
-          </pre>
-        </Card>
-      ) : null}
-
-      <Card className="space-y-3">
-        <CardTitle className="text-base">Giải thích lỗi TOEIC</CardTitle>
-        <Input
-          label="Question ID"
-          type="number"
-          value={explain.questionId}
-          onChange={(e) =>
-            setExplain((s) => ({ ...s, questionId: Number(e.target.value) }))
-          }
-        />
-        <Textarea
-          label="Nội dung câu hỏi"
-          value={explain.questionContent}
-          onChange={(e) =>
-            setExplain((s) => ({ ...s, questionContent: e.target.value }))
-          }
-        />
-        <Input
-          label="Đáp án của bạn"
-          value={explain.userAnswer}
-          onChange={(e) =>
-            setExplain((s) => ({ ...s, userAnswer: e.target.value }))
-          }
-        />
-        <Input
-          label="Đáp án đúng"
-          value={explain.correctAnswer}
-          onChange={(e) =>
-            setExplain((s) => ({ ...s, correctAnswer: e.target.value }))
-          }
-        />
-        <Button loading={explainMut.isPending} onClick={() => explainMut.mutate()}>
-          Giải thích
-        </Button>
-        {explainResult ? (
-          <pre className="max-h-60 overflow-auto text-sm whitespace-pre-wrap">
-            {JSON.stringify(explainResult, null, 2)}
-          </pre>
-        ) : null}
-      </Card>
-
-      <RequireRole roles={["TEACHER", "ADMIN"]}>
-        <Card className="space-y-3">
-          <CardTitle className="text-base">Import ETS PDF (Teacher)</CardTitle>
-          <label className="text-sm">
-            PDF đề thi
-            <input
-              type="file"
-              accept="application/pdf"
-              className="mt-1 block w-full text-sm"
-              onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          <label className="text-sm">
-            Audio (tuỳ chọn)
-            <input
-              type="file"
-              accept="audio/*"
-              className="mt-1 block w-full text-sm"
-              onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
           <Button
-            loading={importMut.isPending}
-            disabled={!pdfFile}
-            onClick={() => importMut.mutate()}
+            loading={chat.isPending}
+            disabled={!prompt.trim()}
+            onClick={() => send(prompt)}
+            aria-label="Gửi"
           >
-            Import
+            <FiSend className="h-4 w-4" />
           </Button>
-          {importResult ? (
-            <pre className="max-h-60 overflow-auto text-xs">
-              {JSON.stringify(importResult, null, 2)}
-            </pre>
-          ) : null}
-        </Card>
-      </RequireRole>
+        </div>
+      </Card>
     </div>
   );
 }

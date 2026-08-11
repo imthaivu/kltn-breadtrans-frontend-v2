@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState, ErrorState, PageLoading } from "@/components/ui/Loading";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { Tag } from "@/components/ui/Tag";
 import { vocabApi } from "@/lib/api/services";
 import type { VocabWord } from "@/lib/api/types";
 import { getErrorMessage } from "@/lib/utils";
@@ -114,6 +116,11 @@ export default function VocabTopicPage() {
             {words.length} từ · #{index + 1}
           </p>
         </div>
+        {mode !== "list" ? (
+          <div className="w-full sm:w-56">
+            <ProgressBar value={index + 1} max={words.length} label={`${index + 1}/${words.length}`} />
+          </div>
+        ) : null}
         <div className="flex gap-2">
           {(["flashcard", "quiz", "list"] as Mode[]).map((m) => (
             <Button
@@ -144,13 +151,12 @@ export default function VocabTopicPage() {
               className="flex flex-wrap items-center justify-between gap-2"
             >
               <div>
-                <div className="font-semibold">
-                  {w.word}{" "}
+                <div className="flex items-center gap-2 font-semibold">
+                  {w.word}
                   {ipa(w) ? (
-                    <span className="text-sm font-normal text-muted">
-                      {ipa(w)}
-                    </span>
+                    <span className="text-sm font-normal text-muted">{ipa(w)}</span>
                   ) : null}
+                  {w.isMastered ? <Tag variant="success">Đã thuộc</Tag> : null}
                 </div>
                 <div className="text-sm text-muted">{w.meaning}</div>
                 {example(w) ? (

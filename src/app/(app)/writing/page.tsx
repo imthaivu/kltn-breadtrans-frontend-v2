@@ -2,11 +2,12 @@
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
+import { FeedbackCard } from "@/components/ui/FeedbackCard";
 import { Textarea } from "@/components/ui/Input";
 import { EmptyState, ErrorState, PageLoading } from "@/components/ui/Loading";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { writingApi } from "@/lib/api/services";
-import { cn, getErrorMessage } from "@/lib/utils";
+import { cn, getErrorMessage, parseFeedbackResult } from "@/lib/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
@@ -444,24 +445,40 @@ export default function WritingPage() {
             </Button>
           </Card>
 
-          {tab === "part1" && communityQ.data ? (
-            <Card>
+          {tab === "part1" && Array.isArray(communityQ.data) && communityQ.data.length > 0 ? (
+            <Card className="space-y-3">
               <CardTitle>Bài của cộng đồng</CardTitle>
-              <pre className="mt-2 max-h-40 overflow-auto text-xs text-muted">
-                {JSON.stringify(communityQ.data, null, 2)}
-              </pre>
+              <div className="max-h-72 space-y-2 overflow-auto">
+                {communityQ.data.map((item) => (
+                  <div
+                    key={item.id}
+                    className="space-y-1 rounded-[var(--radius-control)] bg-surface px-3 py-2.5 text-sm"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-foreground">
+                        {item.user || "Học viên"}
+                      </span>
+                      {typeof item.score === "number" ? (
+                        <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                          {item.score} điểm
+                        </span>
+                      ) : null}
+                    </div>
+                    {item.answer ? (
+                      <p className="whitespace-pre-wrap text-foreground/90">{item.answer}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             </Card>
           ) : null}
 
           {result ? (
-            <Card className="border-primary/40 bg-primary/5">
-              <CardTitle>Kết quả AI</CardTitle>
-              <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap text-sm">
-                {typeof result === "string"
-                  ? result
-                  : JSON.stringify(result, null, 2)}
-              </pre>
-            </Card>
+            typeof result === "string" ? (
+              <FeedbackCard title="Kết quả AI" feedback={result} />
+            ) : (
+              <FeedbackCard title="Kết quả AI" {...parseFeedbackResult(result)} />
+            )
           ) : null}
         </section>
       ) : null}

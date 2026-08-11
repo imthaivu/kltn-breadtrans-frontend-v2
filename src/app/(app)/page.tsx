@@ -17,12 +17,18 @@ import {
   FiHeadphones,
   FiLayers,
   FiMic,
-  FiUpload,
+  FiPlay,
   FiVideo,
 } from "react-icons/fi";
 import { MdOutlineMenuBook } from "react-icons/md";
 
 const STUDENT_SKILLS = [
+  {
+    href: "/quizzes",
+    title: "Luyện thi TOEIC",
+    desc: "Luyện nghe, thi thử Part 1-7 & quy đổi điểm",
+    icon: FiHeadphones,
+  },
   {
     href: "/vocab",
     title: "Từ vựng",
@@ -48,12 +54,6 @@ const STUDENT_SKILLS = [
     icon: FiMic,
   },
   {
-    href: "/quizzes",
-    title: "Listening / Quiz",
-    desc: "Luyện nghe & đề TOEIC",
-    icon: FiHeadphones,
-  },
-  {
     href: "/courses",
     title: "Khóa học",
     desc: "Lớp online Meet / Zoom",
@@ -75,15 +75,9 @@ const TEACHER_ACTIONS = [
     icon: FiLayers,
   },
   {
-    href: "/upload",
-    title: "Upload tài liệu",
-    desc: "PDF, audio lên R2",
-    icon: FiUpload,
-  },
-  {
     href: "/ai",
-    title: "AI cho giáo viên",
-    desc: "Tạo đề TOEIC, import ETS",
+    title: "Trợ lý AI",
+    desc: "Hỏi đáp ngữ pháp, gợi ý học tập",
     icon: FiCpu,
   },
   {
@@ -156,6 +150,27 @@ export default function DashboardPage() {
           )
         }
       />
+
+      {!isTeacher ? (
+        <Link href="/quizzes" className="block">
+          <Card className="flex flex-wrap items-center justify-between gap-4 border-primary/30 bg-primary/5 transition hover:border-primary hover:shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="rounded-[var(--radius-control)] bg-primary p-3 text-white">
+                <FiHeadphones className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle>Thi thử TOEIC đầy đủ Part 1-7</CardTitle>
+                <CardDescription>
+                  Mô phòng thi thật: đồng hồ đếm giờ, bảng câu hỏi, điểm quy đổi 10–990.
+                </CardDescription>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-control)] bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm">
+              Bắt đầu thi thử <FiPlay className="h-4 w-4" />
+            </span>
+          </Card>
+        </Link>
+      ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((s) => {

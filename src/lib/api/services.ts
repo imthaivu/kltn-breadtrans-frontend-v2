@@ -3,11 +3,16 @@ import type {
   Badge,
   Course,
   ClassSummary,
+  CommunitySubmission,
   LeaderboardEntry,
   PracticeTopic,
+  QuizAnalytics,
   QuizDetail,
   QuizSummary,
   SpeakingExercise,
+  SpeakingSubmission,
+  SubmitQuizResponse,
+  ToeicScoreConversion,
   TopicCategory,
   UploadResult,
   UserBadge,
@@ -55,7 +60,7 @@ export const writingApi = {
   topics: () => apiFetch("/writing/topics", { auth: false }),
   quiz: (id: number) => apiFetch(`/writing/quizzes/${id}`, { auth: false }),
   community: (id: number) =>
-    apiFetch(`/writing/quizzes/${id}/community`, { auth: false }),
+    apiFetch<CommunitySubmission[]>(`/writing/quizzes/${id}/community`, { auth: false }),
   submitPart1: (id: number, answer: string) =>
     apiJson(`/writing/quizzes/${id}/submit`, { answer }),
   submitPart2: (emailPrompt: string, userResponse: string) =>
@@ -85,7 +90,7 @@ export const speakingApi = {
   },
   submitPart35: (promptText: string, studentResponse: string) =>
     apiJson("/speaking/part3-5/submit", { promptText, studentResponse }),
-  mySubmissions: () => apiFetch("/speaking/my-submissions"),
+  mySubmissions: () => apiFetch<SpeakingSubmission[]>("/speaking/my-submissions"),
 };
 
 export const quizApi = {
@@ -95,14 +100,12 @@ export const quizApi = {
   create: (body: Record<string, unknown>) => apiJson("/quizzes", body),
   addQuestion: (id: number, body: Record<string, unknown>) =>
     apiJson(`/quizzes/${id}/questions`, body),
-  submit: (
-    id: number,
-    answers: { questionId: number; answer: string }[],
-  ) => apiJson(`/quizzes/${id}/submit`, { answers }),
+  submit: (id: number, answers: { questionId: number; answer: string }[]) =>
+    apiJson<SubmitQuizResponse>(`/quizzes/${id}/submit`, { answers }),
   analytics: (submissionId: number) =>
-    apiFetch(`/quizzes/submissions/${submissionId}/analytics`),
+    apiFetch<QuizAnalytics>(`/quizzes/submissions/${submissionId}/analytics`),
   scoreConversion: (listeningCorrect: number, readingCorrect: number) =>
-    apiJson("/quizzes/score-conversion", {
+    apiJson<ToeicScoreConversion>("/quizzes/score-conversion", {
       listeningCorrect,
       readingCorrect,
     }),
@@ -152,18 +155,51 @@ export const aiApi = {
   explainError: (
     questionId: number,
     body: {
-      questionContent: string;
+      questionContent: unknown;
       userAnswer: string;
       correctAnswer: string;
     },
-  ) => apiJson(`/ai/explain-toeic-error/${questionId}`, body),
+  ) =>
+    apiJson<{ success: boolean; explanation: string }>(
+      `/ai/explain-toeic-error/${questionId}`,
+      body,
+    ),
   importEtsPdf: (pdfFile: File, audioFile?: File) => {
     const form = new FormData();
     form.append("pdfFile", pdfFile);
     if (audioFile) form.append("audioFile", audioFile);
-    return apiFetch("/ai/import-ets-pdf", { method: "POST", body: form });
+    return apiFetch<{ success: boolean; message: string; quizId: number }>(
+      "/ai/import-ets-pdf",
+      { method: "POST", body: form },
+    );
   },
 };
+
+const PRESIGN_THRESHOLD_BYTES = 8 * 1024 * 1024; // 8MB — file lớn upload thẳng lên R2
+
+function guessUploadFolder(mimeType: string): string {
+  if (mimeType.startsWith("image/")) return "images";
+  if (mimeType.startsWith("audio/")) return "audio";
+  if (mimeType.startsWith("video/")) return "videos";
+  if (mimeType === "application/pdf") return "documents";
+  return "uploads";
+}
+
+function fileExt(file: File): string {
+  const fromName = file.name.includes(".")
+    ? `.${file.name.split(".").pop()}`
+    : "";
+  if (fromName && fromName.length <= 8) return fromName;
+  const map: Record<string, string> = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "audio/mpeg": ".mp3",
+    "video/mp4": ".mp4",
+    "application/pdf": ".pdf",
+  };
+  return map[file.type] ?? "";
+}
 
 export const uploadApi = {
   upload: (file: File) => {
@@ -176,7 +212,39 @@ export const uploadApi = {
   presign: (key: string, mimeType: string, expiresIn?: number) => {
     const params = new URLSearchParams({ key, mimeType });
     if (expiresIn) params.set("expiresIn", String(expiresIn));
-    return apiFetch(`/upload/presign?${params.toString()}`);
+    return apiFetch<{ presignedUrl: string; key: string }>(
+      `/upload/presign?${params.toString()}`,
+    );
+  },
+  /**
+   * File nhỏ → multipart qua Nest; file lớn → presign rồi PUT thẳng R2
+   * (cần NEXT_PUBLIC_R2_PUBLIC_URL trùng R2_PUBLIC_URL phía BE).
+   */
+  uploadSmart: async (file: File): Promise<UploadResult> => {
+    const publicBase = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "");
+    if (!publicBase || file.size < PRESIGN_THRESHOLD_BYTES) {
+      return uploadApi.upload(file);
+    }
+    const mimeType = file.type || "application/octet-stream";
+    const key = `${guessUploadFolder(mimeType)}/${crypto.randomUUID()}${fileExt(file)}`;
+    const { presignedUrl, key: returnedKey } = await uploadApi.presign(
+      key,
+      mimeType,
+    );
+    const put = await fetch(presignedUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": mimeType },
+    });
+    if (!put.ok) {
+      throw new Error("Upload trực tiếp lên R2 thất bại — thử lại hoặc dùng file nhỏ hơn.");
+    }
+    const finalKey = returnedKey || key;
+    return {
+      url: `${publicBase}/${finalKey}`,
+      key: finalKey,
+      contentType: mimeType,
+    };
   },
 };
 

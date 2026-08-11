@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { EmptyState, ErrorState, PageLoading } from "@/components/ui/Loading";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import { readingApi } from "@/lib/api/services";
 import type { TopicCategory } from "@/lib/api/types";
 import { getErrorMessage } from "@/lib/utils";
@@ -91,21 +92,27 @@ export default function ReadingPage() {
         <EmptyState title="Chưa có chủ đề reading" />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {q.data.map((t) => (
-            <Link key={t.id} href={`/reading/${t.id}`} className="block">
-              <Card className="h-full transition hover:border-primary hover:shadow-md">
-                <CardTitle>
-                  {t.name || t.title || `Topic #${t.id}`}
-                </CardTitle>
-                <CardDescription>
-                  {t.vietnameseName ||
-                    t.description ||
-                    t.category ||
-                    "Xem chi tiết"}
-                </CardDescription>
-              </Card>
-            </Link>
-          ))}
+          {q.data.map((t) => {
+            const total = Number(t.totalQuestions ?? 0);
+            const completed = Number(t.completedQuestions ?? 0);
+            return (
+              <Link key={t.id} href={`/reading/${t.id}`} className="block">
+                <Card className="h-full space-y-2 transition hover:border-primary hover:shadow-md">
+                  <CardTitle>{t.name || t.title || `Topic #${t.id}`}</CardTitle>
+                  <CardDescription>
+                    {t.vietnameseName || t.description || t.category || "Xem chi tiết"}
+                  </CardDescription>
+                  {total > 0 ? (
+                    <ProgressBar
+                      value={completed}
+                      max={total}
+                      label={`${completed}/${total} câu`}
+                    />
+                  ) : null}
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

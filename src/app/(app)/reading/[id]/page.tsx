@@ -1,8 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
-import { ErrorState, PageLoading } from "@/components/ui/Loading";
+import { Card, CardTitle } from "@/components/ui/Card";
+import { EmptyState, ErrorState, PageLoading } from "@/components/ui/Loading";
+import { Tag } from "@/components/ui/Tag";
 import { readingApi } from "@/lib/api/services";
 import type { QuizSummary } from "@/lib/api/types";
 import { getErrorMessage } from "@/lib/utils";
@@ -10,12 +11,14 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiBookOpen, FiFileText, FiPlay } from "react-icons/fi";
 
 export default function ReadingTopicPage() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
-  const [theory, setTheory] = useState<unknown>(null);
+  const [theoryContent, setTheoryContent] = useState<string | null>(null);
+  const [theoryError, setTheoryError] = useState<string | null>(null);
+  const [theoryOpenFor, setTheoryOpenFor] = useState<number | null>(null);
   const [theoryLoading, setTheoryLoading] = useState(false);
 
   const q = useQuery({
@@ -32,10 +35,18 @@ export default function ReadingTopicPage() {
 
   async function loadTheory(quizId: number) {
     setTheoryLoading(true);
+    setTheoryOpenFor(quizId);
+    setTheoryContent(null);
+    setTheoryError(null);
     try {
-      setTheory(await readingApi.theory(quizId));
+      const data = await readingApi.theory(quizId);
+      const content =
+        data && typeof data === "object" && "theoryContent" in data
+          ? (data as { theoryContent?: string | null }).theoryContent
+          : null;
+      setTheoryContent(content?.trim() ? content : "");
     } catch (err) {
-      setTheory({ error: getErrorMessage(err) });
+      setTheoryError(getErrorMessage(err));
     } finally {
       setTheoryLoading(false);
     }
@@ -68,7 +79,9 @@ export default function ReadingTopicPage() {
             >
               <div>
                 <CardTitle className="text-base">{quiz.title}</CardTitle>
-                <CardDescription>{quiz.type || "Quiz"}</CardDescription>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  <Tag variant="primary">{quiz.type || "Quiz"}</Tag>
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -77,10 +90,17 @@ export default function ReadingTopicPage() {
                   loading={theoryLoading}
                   onClick={() => void loadTheory(quiz.id)}
                 >
-                  Lý thuyết
+                  <FiBookOpen className="h-4 w-4" /> Lý thuyết
                 </Button>
                 <Link href={`/quizzes/${quiz.id}`}>
-                  <Button size="sm">Làm bài</Button>
+                  <Button size="sm" variant="outline">
+                    Luyện tập
+                  </Button>
+                </Link>
+                <Link href={`/quizzes/${quiz.id}/exam`}>
+                  <Button size="sm">
+                    <FiPlay className="h-4 w-4" /> Thi thử
+                  </Button>
                 </Link>
               </div>
             </Card>
@@ -88,21 +108,22 @@ export default function ReadingTopicPage() {
         )}
       </div>
 
-      {theory ? (
-        <Card>
-          <CardTitle className="text-base">Nội dung lý thuyết</CardTitle>
-          <div className="prose mt-3 max-w-none whitespace-pre-wrap text-sm">
-            {typeof theory === "string"
-              ? theory
-              : typeof theory === "object" &&
-                  theory &&
-                  "theoryContent" in (theory as object)
-                ? String(
-                    (theory as { theoryContent?: string }).theoryContent ??
-                      JSON.stringify(theory, null, 2),
-                  )
-                : JSON.stringify(theory, null, 2)}
-          </div>
+      {theoryOpenFor != null ? (
+        <Card className="space-y-3 bg-surface/60">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FiFileText className="h-4 w-4 text-primary" /> Nội dung lý thuyết
+          </CardTitle>
+          {theoryLoading ? (
+            <PageLoading label="Đang tải lý thuyết..." />
+          ) : theoryError ? (
+            <ErrorState message={theoryError} />
+          ) : theoryContent ? (
+            <div className="max-w-none rounded-[var(--radius-control)] border border-border bg-white p-4 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+              {theoryContent}
+            </div>
+          ) : (
+            <EmptyState title="Chưa có nội dung lý thuyết cho bài này" />
+          )}
         </Card>
       ) : null}
     </div>
